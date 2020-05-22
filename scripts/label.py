@@ -10,8 +10,8 @@ import cv2
 
 """
 q -> quit
-n -> next frame (can hold)
-p -> prev frame (can hold)
+n -> next frame (can hold, will speed up over time)
+p -> prev frame (can hold, will speed up over time)
 1 -> mark intro start
 2 -> mark intro end
 3 -> mark outro start
@@ -35,6 +35,8 @@ def create_label_dict():
 
 def label_video(video_path):
     res = create_label_dict()
+    prev_key = None
+    consec_held = 0
 
     cap = cv2.VideoCapture(video_path)
     while cap.isOpened():
@@ -43,17 +45,28 @@ def label_video(video_path):
         cv2.imshow("frame", frame)
 
         key = cv2.waitKey(30)
+        released = False
         while not key in VALID_KEYS.values():
             key = cv2.waitKey(30)
+            if key == -1:
+                released = True
 
         timestamp_ms = cap.get(cv2.CAP_PROP_POS_MSEC)
         timestamp_minutes = str(datetime.timedelta(seconds=timestamp_ms / 1000))
 
+        if key == prev_key and not released:
+            consec_held += 1
+        else:
+            consec_held = 0
+
         if key == VALID_KEYS["q"]:
             sys.exit(0)
 
-        elif key == VALID_KEYS["p"] and frame_num > 1:
-            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_num - 2)
+        elif key == VALID_KEYS["n"]:
+            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_num + consec_held)
+
+        elif key == VALID_KEYS["p"] and frame_num - consec_held > 1:
+            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_num - consec_held)
 
         elif key == VALID_KEYS["1"]:
             res["intro_start"] = timestamp_minutes
@@ -74,6 +87,8 @@ def label_video(video_path):
                 )
             else:
                 break
+
+        prev_key = key
 
     return res
 
