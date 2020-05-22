@@ -39,9 +39,29 @@ def label_video(video_path):
     consec_held = 0
 
     cap = cv2.VideoCapture(video_path)
-    while cap.isOpened():
-        _, frame = cap.read()
+    num_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    read_new_frame = True
+    frame = None
+
+    while True:
+        if frame is None or read_new_frame:
+            _, frame = cap.read()
+        if not read_new_frame:
+            logging.warn("At the limit of the video!")
+
         frame_num = int(cap.get(cv2.CAP_PROP_POS_FRAMES))
+        timestamp_ms = cap.get(cv2.CAP_PROP_POS_MSEC)
+        timestamp_minutes = str(datetime.timedelta(seconds=timestamp_ms / 1000))
+
+        cv2.putText(
+            frame,
+            timestamp_minutes,
+            org=(10, 50),
+            fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+            fontScale=1,
+            color=(0, 0, 255),
+            thickness=2,
+        )
         cv2.imshow("frame", frame)
 
         key = cv2.waitKey(30)
@@ -51,22 +71,27 @@ def label_video(video_path):
             if key == -1:
                 released = True
 
-        timestamp_ms = cap.get(cv2.CAP_PROP_POS_MSEC)
-        timestamp_minutes = str(datetime.timedelta(seconds=timestamp_ms / 1000))
-
         if key == prev_key and not released:
             consec_held += 1
         else:
             consec_held = 0
 
+        read_new_frame = True
+
         if key == VALID_KEYS["q"]:
             sys.exit(0)
 
         elif key == VALID_KEYS["n"]:
-            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_num + consec_held)
+            if frame_num + consec_held < num_frames:
+                cap.set(cv2.CAP_PROP_POS_FRAMES, frame_num + consec_held)
+            else:
+                read_new_frame = False
 
-        elif key == VALID_KEYS["p"] and frame_num - consec_held > 1:
-            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_num - consec_held)
+        elif key == VALID_KEYS["p"]:
+            if frame_num - consec_held > 1:
+                cap.set(cv2.CAP_PROP_POS_FRAMES, frame_num - consec_held)
+            else:
+                read_new_frame = False
 
         elif key == VALID_KEYS["1"]:
             res["intro_start"] = timestamp_minutes
