@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import requests
 
@@ -13,15 +14,28 @@ with open('download_links.json', 'r') as f:
 for episode in download_links:
     filename = episode + '.mp4'
     if filename in downloaded:
-        print(filename, 'already downloaded')
+        # print(filename, 'already downloaded')
         continue
     
     try:
         url = download_links[episode]
-        r = requests.get(url, allow_redirects=True)
-        open(folder + filename, 'wb').write(r.content)
+        r = requests.get(url, allow_redirects=True, stream=True)
+
+        # progress bar
+        total_length = int(r.headers.get('content-length'))
+        dl = 0
+        print("Downloading", episode)
         
-        print('Finished:', episode)
+        with open(folder + filename, 'wb') as f:
+            for data in r.iter_content(chunk_size=4096):
+                f.write(data)
+                dl += len(data)
+                done = int(50 * dl / total_length)
+                sys.stdout.write("\r[%s%s]" % ('=' * done, ' ' * (50 - done)))
+                sys.stdout.flush()
+
+
+        print('\nFinished:', episode)
 
     except:
         print('Failed:', episode)
