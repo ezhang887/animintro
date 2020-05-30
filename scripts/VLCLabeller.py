@@ -146,7 +146,17 @@ class Labeller():
                 self.player.play()
 
 if __name__ == "__main__":
-    logging.getLogger().setLevel(logging.INFO)
+    # redirect stderr into /dev/null, to get rid of the VLC logs
+    dev_null_fd = os.open("/dev/null", os.O_RDWR)
+    os.dup2(dev_null_fd, 2)
+
+    # setup logging to print to stdout instead of stderr,
+    # since stderr now goes to /dev/null
+    root = logging.getLogger()
+    root.setLevel(logging.INFO)
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(logging.INFO)
+    root.addHandler(handler)
 
     parser = argparse.ArgumentParser()
     parser.add_argument("video_folder")
