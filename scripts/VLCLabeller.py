@@ -1,4 +1,6 @@
 import vlc
+import signal
+import sys
 import time
 import threading
 
@@ -30,11 +32,19 @@ class Labeller():
         self.thread_period = 0.1 #0.1 sec
         self.numbers = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0']
 
-        t1 = threading.Thread(target=self._pause_if_end)
-        t1.start()
+        self.running = True
+        signal.signal(signal.SIGINT, self._sigint_handler)
 
-    def _pause_if_end(self):
-        while True:
+        t1 = threading.Thread(target=self._watchdog)
+        t1.start()
+        t1.join()
+        self.player.stop()
+
+    def _sigint_handler(self, signum, frame):
+        self.running = False
+
+    def _watchdog(self):
+        while self.running:
             if self.player.get_time() >= self.end_time - self.end_margin:
                 if self.player.get_state() == vlc.State.Playing:
                     self.player.pause()
@@ -90,7 +100,4 @@ class Labeller():
             if self.player.get_state != vlc.State.Playing:
                 self.player.play()
 
-Labeller("test.mp4")
-while True:
-    continue
-
+Labeller("/home/ezhang/anime/video_folder/anime.mp4")
