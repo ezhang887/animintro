@@ -116,12 +116,16 @@ class Labeller():
 
         # set labels
         elif k == 'q':
+            logging.info(f"Saving intro_start as {t}...")
             self.intro_start = t
         elif k == 'w':
+            logging.info(f"Saving intro_end as {t}...")
             self.intro_end = t
         elif k == 'e':
+            logging.info(f"Saving outro_start as {t}...")
             self.outro_start = t
         elif k == 'r':
+            logging.info(f"Saving outro_end as {t}...")
             self.outro_end = t
 
         # jump to labelled times
