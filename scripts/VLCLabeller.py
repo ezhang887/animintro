@@ -40,8 +40,13 @@ class Labeller:
         # start playing video
         self.player = vlc.MediaPlayer(video_path)
         self.player.play()
-        self.running = True
         time.sleep(0.1)  # hack
+
+        if not self.player.is_playing():
+            logging.warn(f"{video_path} is unplayable, moving on...")
+            return
+
+        self.running = True
         self.end_time = self.player.get_media().get_duration()
 
         # start watchdog
