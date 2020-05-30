@@ -6,6 +6,7 @@ import argparse
 import sys
 import time
 import threading
+import logging
 
 from pynput import keyboard
 
@@ -30,6 +31,8 @@ class Labeller():
         signal.signal(signal.SIGINT, self._sigint_handler)
 
     def run(self, video_path):
+        logging.info(f"Starting labeller for {video_path}...")
+
         # start playing video
         self.player = vlc.MediaPlayer(video_path)
         self.player.play()
@@ -46,16 +49,19 @@ class Labeller():
 
         # and cleanup
         self.player.stop()
+        logging.info(f"Cleaned up labeller for {video_path}...")
 
     def _sigint_handler(self, signum, frame):
         self.running = False
         self.listener.stop()
+        logging.info(f"Cleaned up everything, exiting program...")
         sys.exit(0)
 
     def _watchdog(self):
         while self.running:
             if self.player.get_time() >= self.end_time - self.end_margin:
                 if self.player.get_state() == vlc.State.Playing:
+                    logging.warn(f"At the end of video, stopping so it doesn't get stuck...")
                     self.player.pause()
             time.sleep(self.thread_period)
 
@@ -114,6 +120,8 @@ class Labeller():
                 self.player.play()
 
 if __name__ == "__main__":
+    logging.getLogger().setLevel(logging.INFO)
+
     parser = argparse.ArgumentParser()
     parser.add_argument("video_folder")
     #parser.add_argument("output_folder")
@@ -123,5 +131,5 @@ if __name__ == "__main__":
     video_files = sorted(glob.glob(os.path.join(video_folder, "*.mp4")))
 
     labeller = Labeller()
-    for f in video_files:
-        labeller.run(f)
+    for file_name in video_files:
+        labeller.run(file_name)
