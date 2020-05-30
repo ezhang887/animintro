@@ -6,7 +6,6 @@ import argparse
 import sys
 import time
 import threading
-import logging
 
 from reprint import output
 from pynput import keyboard
@@ -44,7 +43,6 @@ class Labeller:
     def run(self, video_path):
         basename = Path(video_path).stem
         self.fancy_log = f"Starting labeller for {basename}..."
-        # logging.info(f"Starting labeller for {basename}...")
 
         # start playing video
         self.player = vlc.MediaPlayer(video_path)
@@ -52,7 +50,6 @@ class Labeller:
         time.sleep(0.1)  # hack
 
         if not self.player.is_playing():
-            # logging.warn(f"{video_path} is unplayable, moving on...")
             return
 
         self.running = True
@@ -68,8 +65,6 @@ class Labeller:
         # and cleanup
         self.player.stop()
         self._save_video_files(basename)
-
-        # logging.info(f"Cleaned up labeller for {basename}...")
 
     def _validate_labels(self):
         # TODO: maybe check if the timestamps are correct (like intro_end > intro_start, 
@@ -88,7 +83,6 @@ class Labeller:
             f.write(f"{self.intro_end}\n")
             f.write(f"{self.outro_start}\n")
             f.write(f"{self.outro_end}\n")
-        # logging.info(f"Saved labels to {output_fname}...")
 
         self.intro_start = None
         self.intro_end = None
@@ -98,7 +92,6 @@ class Labeller:
     def _sigint_handler(self, signum, frame):
         self.running = False
         self.listener.stop()
-        # logging.info(f"Cleaned up everything, exiting program...")
         sys.exit(0)
 
     def _watchdog(self):
@@ -106,11 +99,6 @@ class Labeller:
             self._print()
             if self.player.get_time() >= self.end_time - self.end_margin:
                 if self.player.get_state() == vlc.State.Playing:
-                    '''
-                    logging.warn(
-                        f"At the end of video, stopping so it doesn't get stuck..."
-                    )
-                    '''
                     self.player.pause()
             time.sleep(self.thread_period)
 
@@ -138,24 +126,19 @@ class Labeller:
             if self._validate_labels():
                 self.running = False
             else:
-                # logging.warn("Labels not valid! Not moving on...")
                 self.fancy_log = "Labels not valid! Not moving on..."
 
         # set labels
         elif k == "q":
-            # logging.info(f"Saving intro_start as {t}...")
             self.fancy_log = f"Saving intro_start as {t}..."
             self.intro_start = t
         elif k == "w":
-            # logging.info(f"Saving intro_end as {t}...")
             self.fancy_log = f"Saving intro_end as {t}..."
             self.intro_end = t
         elif k == "e":
-            # logging.info(f"Saving outro_start as {t}...")
             self.fancy_log = f"Saving outro_start as {t}..."
             self.outro_start = t
         elif k == "r":
-            # logging.info(f"Saving outro_end as {t}...")
             self.fancy_log = f"Saving outro_end as {t}..."
             self.outro_end = t
 
@@ -181,31 +164,13 @@ class Labeller:
                 self.player.play()
 
     def _print(self):
-
         self.fancy_out[0] = self.fancy_log
-        self.fancy_out[1] = "Intro Start: %s" % self.intro_start
-        self.fancy_out[2] = "Intro Start: %s" % self.intro_end
-        self.fancy_out[3] = "Intro Start: %s" % self.outro_start
-        self.fancy_out[4] = "Intro Start: %s" % self.outro_end
+        self.fancy_out[1] = f"Intro Start: {self.intro_start}"
+        self.fancy_out[2] = f"Intro End: {self.intro_end}"
+        self.fancy_out[3] = f"Outro Start: {self.outro_start}"
+        self.fancy_out[4] = f"Outro End: {self.outro_end}"
 
 if __name__ == "__main__":
-
-    # redirect stderr into /dev/null, to get rid of the VLC logs
-    # from this point on, stderr will not display for this process at all
-    # but stdout still will.
-    # dev_null_fd = os.open("/dev/null", os.O_RDWR)
-    # os.dup2(dev_null_fd, 2)
-
-    # setup logging to print to stdout instead of stderr,
-    # since stderr now goes to /dev/null
-
-    '''
-    root = logging.getLogger()
-    root.setLevel(logging.INFO)
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setLevel(logging.INFO)
-    root.addHandler(handler)
-    '''
 
     parser = argparse.ArgumentParser()
     parser.add_argument("video_folder")
