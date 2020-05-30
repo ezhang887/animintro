@@ -42,8 +42,13 @@ class Labeller:
         # start playing video
         self.player = vlc.MediaPlayer(video_path)
         self.player.play()
-        self.running = True
         time.sleep(0.1)  # hack
+
+        if not self.player.is_playing():
+            logging.warn(f"{video_path} is unplayable, moving on...")
+            return
+
+        self.running = True
         self.end_time = self.player.get_media().get_duration()
 
         # start watchdog
@@ -163,8 +168,10 @@ class Labeller:
 if __name__ == "__main__":
 
     # redirect stderr into /dev/null, to get rid of the VLC logs
-    # dev_null_fd = os.open("/dev/null", os.O_RDWR)
-    # os.dup2(dev_null_fd, 2)
+    # from this point on, stderr will not display for this process at all
+    # but stdout still will.
+    dev_null_fd = os.open("/dev/null", os.O_RDWR)
+    os.dup2(dev_null_fd, 2)
 
     # setup logging to print to stdout instead of stderr,
     # since stderr now goes to /dev/null
