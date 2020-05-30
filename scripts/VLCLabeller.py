@@ -9,10 +9,11 @@ import threading
 import logging
 
 from pynput import keyboard
+from pathlib import Path
 
 class Labeller():
 
-    def __init__(self):
+    def __init__(self, output_folder):
         # setup keyboard listener
         self.listener = keyboard.Listener(on_press=self._on_press)
         self.listener.start()
@@ -27,11 +28,14 @@ class Labeller():
         self.thread_period = 0.1 # 0.1 sec
         self.numbers = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0']
 
+        self.output_folder = output_folder
+
         # setup watchdog and signal handler
         signal.signal(signal.SIGINT, self._sigint_handler)
 
     def run(self, video_path):
-        logging.info(f"Starting labeller for {video_path}...")
+        basename = Path(video_path).stem
+        logging.info(f"Starting labeller for {basename}...")
 
         # start playing video
         self.player = vlc.MediaPlayer(video_path)
@@ -49,7 +53,27 @@ class Labeller():
 
         # and cleanup
         self.player.stop()
-        logging.info(f"Cleaned up labeller for {video_path}...")
+        self._save_video_files(basename)
+
+        logging.info(f"Cleaned up labeller for {basename}...")
+
+    def _validate_labels(self):
+        # TODO: maybe check if the timestamps are correct (like intro_end > intro_start, intro_end < outtro_start), etc
+        return None not in {self.intro_start, self.intro_end, self.outro_start, self.outro_end}
+
+    def _save_video_files(self, basename):
+        output_fname = f"{os.path.join(self.output_folder, basename)}.label"
+        with open(output_fname, "w") as f:
+            f.write(f"{self.intro_start}\n")
+            f.write(f"{self.intro_end}\n")
+            f.write(f"{self.outro_start}\n")
+            f.write(f"{self.outro_end}\n")
+        logging.info(f"Saved labels to {output_fname}...")
+
+        self.intro_start = None
+        self.intro_end = None
+        self.outro_start = None
+        self.outro_end = None
 
     def _sigint_handler(self, signum, frame):
         self.running = False
@@ -85,8 +109,10 @@ class Labeller():
             self.player.set_time(new_t)
         # move to next video
         elif k == 'n':
-            # TODO: maybe add some checks to make sure all the labels were set b4 moving on
-            self.running = False
+            if self._validate_labels():
+                self.running = False
+            else:
+                logging.warn("Labels not valid! Not moving on...")
 
         # set labels
         elif k == 'q':
@@ -124,12 +150,12 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("video_folder")
-    #parser.add_argument("output_folder")
+    parser.add_argument("output_folder")
     args = parser.parse_args()
 
     video_folder = args.video_folder
     video_files = sorted(glob.glob(os.path.join(video_folder, "*.mp4")))
 
-    labeller = Labeller()
+    labeller = Labeller(args.output_folder)
     for file_name in video_files:
         labeller.run(file_name)
