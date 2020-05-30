@@ -30,7 +30,7 @@ class Labeller:
 
         self.output_folder = output_folder
 
-        # setup watchdog and signal handler
+        # setup signal handler
         signal.signal(signal.SIGINT, self._sigint_handler)
 
     def run(self, video_path):
@@ -164,6 +164,8 @@ class Labeller:
 
 if __name__ == "__main__":
     # redirect stderr into /dev/null, to get rid of the VLC logs
+    # from this point on, stderr will not display for this process at all
+    # but stdout still will.
     dev_null_fd = os.open("/dev/null", os.O_RDWR)
     os.dup2(dev_null_fd, 2)
 
