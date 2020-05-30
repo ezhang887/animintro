@@ -18,11 +18,13 @@ class Labeller:
         self.listener = keyboard.Listener(on_press=self._on_press)
         self.listener.start()
 
+        # labels
         self.intro_start = None
         self.intro_end = None
         self.outro_start = None
         self.outro_end = None
 
+        # constants
         self.skip_time = 5000  # 5 sec
         self.end_margin = 500  # 0.5 sec
         self.thread_period = 0.1  # 0.1 sec
@@ -30,7 +32,7 @@ class Labeller:
 
         self.output_folder = output_folder
 
-        # setup watchdog and signal handler
+        # setup signal handler
         signal.signal(signal.SIGINT, self._sigint_handler)
 
     def run(self, video_path):
@@ -114,6 +116,7 @@ class Labeller:
         elif k == "k":
             new_t = max(0, t - self.skip_time)
             self.player.set_time(new_t)
+
         # move to next video
         elif k == "n":
             if self._validate_labels():
@@ -158,9 +161,10 @@ class Labeller:
 
 
 if __name__ == "__main__":
+
     # redirect stderr into /dev/null, to get rid of the VLC logs
-    dev_null_fd = os.open("/dev/null", os.O_RDWR)
-    os.dup2(dev_null_fd, 2)
+    # dev_null_fd = os.open("/dev/null", os.O_RDWR)
+    # os.dup2(dev_null_fd, 2)
 
     # setup logging to print to stdout instead of stderr,
     # since stderr now goes to /dev/null
@@ -172,12 +176,17 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("video_folder")
-    parser.add_argument("output_folder")
+    parser.add_argument("label_folder")
     args = parser.parse_args()
 
     video_folder = args.video_folder
-    video_files = sorted(glob.glob(os.path.join(video_folder, "*.mp4")))
+    label_folder = args.label_folder
 
-    labeller = Labeller(args.output_folder)
+    label_files = glob.glob(os.path.join(label_folder, "*.label"))
+    label_files = [Path(f).stem for f in label_files]
+    video_files = sorted(glob.glob(os.path.join(video_folder, "*.mp4")))
+    video_files = [f for f in video_files if not Path(f).stem in label_files]
+
+    labeller = Labeller(label_folder)
     for file_name in video_files:
         labeller.run(file_name)
