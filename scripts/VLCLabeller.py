@@ -6,6 +6,8 @@ import argparse
 import sys
 import time
 import threading
+import logging
+import shutil
 
 from reprint import output
 from pynput import keyboard
@@ -13,8 +15,7 @@ from pathlib import Path
 
 
 class Labeller:
-
-    def __init__(self, output_folder):
+    def __init__(self, output_folder, logging_folder):
         # setup keyboard listener
         self.listener = keyboard.Listener(on_press=self._on_press)
         self.listener.start()
@@ -32,17 +33,20 @@ class Labeller:
         self.numbers = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]
 
         self.output_folder = output_folder
+        self.logging_folder = logging_folder
 
         # setup signal handler
         signal.signal(signal.SIGINT, self._sigint_handler)
 
-        self._fancy_out = output(initial_len=5, interval=0)
-        self.fancy_out = self._fancy_out.__enter__()
-        self.fancy_log = ''
+        self.displayer = output(initial_len=5, interval=0)
+        self.output_buffer = self.displayer.__enter__()
+        self.status = ""
 
     def run(self, video_path):
         basename = Path(video_path).stem
-        self.fancy_log = f"Starting labeller for {basename}..."
+        self.status = f"Starting labeller for {basename}..."
+        self.logger = self._setup_logger(f"{basename}.log")
+        self.logger.info(self.status)
 
         # start playing video
         self.player = vlc.MediaPlayer(video_path)
@@ -66,8 +70,22 @@ class Labeller:
         self.player.stop()
         self._save_video_files(basename)
 
+    def __del__(self):
+        self.displayer.__exit__()
+        self.listener.stop()
+
+    def _setup_logger(self, filename):
+        handler = logging.FileHandler(os.path.join(self.logging_folder, filename))
+        formatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
+        handler.setFormatter(formatter)
+
+        logger = logging.getLogger(filename)
+        logger.setLevel(logging.INFO)
+        logger.addHandler(handler)
+        return logger
+
     def _validate_labels(self):
-        # TODO: maybe check if the timestamps are correct (like intro_end > intro_start, 
+        # TODO: maybe check if the timestamps are correct (like intro_end > intro_start,
         # intro_end < outtro_start), etc
         return None not in {
             self.intro_start,
@@ -83,6 +101,7 @@ class Labeller:
             f.write(f"{self.intro_end}\n")
             f.write(f"{self.outro_start}\n")
             f.write(f"{self.outro_end}\n")
+        self.logger.info(f"Saved labels to {output_fname}...")
 
         self.intro_start = None
         self.intro_end = None
@@ -99,6 +118,9 @@ class Labeller:
             self._print()
             if self.player.get_time() >= self.end_time - self.end_margin:
                 if self.player.get_state() == vlc.State.Playing:
+                    self.logger.warn(
+                        "Hit end of video, pausing so vlc doesn't get stuck..."
+                    )
                     self.player.pause()
             time.sleep(self.thread_period)
 
@@ -126,20 +148,25 @@ class Labeller:
             if self._validate_labels():
                 self.running = False
             else:
-                self.fancy_log = "Labels not valid! Not moving on..."
+                self.status = "Labels not valid! Not moving on..."
+                self.logger.warn(self.status)
 
         # set labels
         elif k == "q":
-            self.fancy_log = f"Saving intro_start as {t}..."
+            self.status = f"Saving intro_start as {t}..."
+            self.logger.info(self.status)
             self.intro_start = t
         elif k == "w":
-            self.fancy_log = f"Saving intro_end as {t}..."
+            self.status = f"Saving intro_end as {t}..."
+            self.logger.info(self.status)
             self.intro_end = t
         elif k == "e":
-            self.fancy_log = f"Saving outro_start as {t}..."
+            self.status = f"Saving outro_start as {t}..."
+            self.logger.info(self.status)
             self.outro_start = t
         elif k == "r":
-            self.fancy_log = f"Saving outro_end as {t}..."
+            self.status = f"Saving outro_end as {t}..."
+            self.logger.info(self.status)
             self.outro_end = t
 
         # jump to labelled times
@@ -164,18 +191,21 @@ class Labeller:
                 self.player.play()
 
     def _print(self):
-        self.fancy_out[0] = self.fancy_log
-        self.fancy_out[1] = f"Intro Start: {self.intro_start}"
-        self.fancy_out[2] = f"Intro End: {self.intro_end}"
-        self.fancy_out[3] = f"Outro Start: {self.outro_start}"
-        self.fancy_out[4] = f"Outro End: {self.outro_end}"
+        self.output_buffer[0] = self.status
+        self.output_buffer[1] = f"Intro Start: {self.intro_start}"
+        self.output_buffer[2] = f"Intro End: {self.intro_end}"
+        self.output_buffer[3] = f"Outro Start: {self.outro_start}"
+        self.output_buffer[4] = f"Outro End: {self.outro_end}"
+
 
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser()
     parser.add_argument("video_folder")
     parser.add_argument("label_folder")
+    parser.add_argument("--log_folder", default="logs")
     args = parser.parse_args()
+
+    global_logger = logging.getLogger(__name__)
 
     video_folder = args.video_folder
     label_folder = args.label_folder
@@ -185,6 +215,17 @@ if __name__ == "__main__":
     video_files = sorted(glob.glob(os.path.join(video_folder, "*.mp4")))
     video_files = [f for f in video_files if not Path(f).stem in label_files]
 
-    labeller = Labeller(label_folder)
+    log_folder = args.log_folder
+    # If the logs folder already exists, move that folder to somewhere else
+    if os.path.exists(log_folder):
+        new_logs_path = f"{log_folder}_{time.strftime('%Y%m%d-%H%M%S')}"
+        global_logger.warn(
+            f"{log_folder} already exists! Moving that to {new_logs_path}"
+        )
+        shutil.move(log_folder, new_logs_path)
+    os.makedirs(log_folder)
+
+    labeller = Labeller(label_folder, log_folder)
+
     for file_name in video_files:
         labeller.run(file_name)
