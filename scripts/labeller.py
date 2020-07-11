@@ -71,8 +71,8 @@ class Labeller:
         self._save_video_files(basename)
 
     def __del__(self):
-        self.displayer.__exit__()
         self.listener.stop()
+        self.displayer.__exit__()
 
     def _setup_logger(self, filename):
         handler = logging.FileHandler(os.path.join(self.logging_folder, filename))

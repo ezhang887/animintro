@@ -3,7 +3,7 @@ import sys
 import json
 import requests
 
-folder = 'Episodes/'
+folder = '../../data/Episodes/'
 downloaded = os.listdir(folder)
 
 download_links = {}
@@ -14,7 +14,6 @@ with open('download_links.json', 'r') as f:
 for episode in download_links:
     filename = episode + '.mp4'
     if filename in downloaded:
-        # print(filename, 'already downloaded')
         continue
     
     try:
