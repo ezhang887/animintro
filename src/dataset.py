@@ -19,14 +19,15 @@ class AnimeAudioDataset(Dataset):
         self.device = device
 
         self.audio_dir = 'data/Audio'
-        self.label_dir = 'data/Labels/nick'
+        self.label_dir = 'data/Labels' # change this to whatever
         
-        self.audio_files, self.max_length = self._load_audio()
-        raw_labels = self._load_labels(self.audio_files)
+        self.audio_filenames, self.max_length = self._load_audio()
+        raw_labels = self._load_labels(self.audio_filenames)
+        print(raw_labels)
         self.labels, self.l_mean, self.l_std = self._normalize_labels(raw_labels)
         self.labels = self.labels.to(self.device)
     
-        assert len(self.audio_files) == len(self.labels)
+        assert len(self.audio_filenames) == len(self.labels)
         
         '''
         self.data = self._pad_audio(self._load_audio())
@@ -35,25 +36,49 @@ class AnimeAudioDataset(Dataset):
         '''
         
     def _load_audio(self):
+        """loads in audio filenames and finds maximum length of all audio segments
 
-        audio_files = []
+        Returns
+        -------
+        [str, ...], int
+            array of filenames, maximum length of all audio segments
+        """
+        audio_filenames = []
         max_length = 0
         
         for a in os.listdir(self.audio_dir):
-            audio_files.append(a)
+            audio_filenames.append(a)
             
-            audio_file = os.path.join(self.audio_dir, a)
-            waveform, _ = torchaudio.load(audio_file)
+            audio_filename = os.path.join(self.audio_dir, a)
+            waveform, _ = torchaudio.load(audio_filename)
             max_length = max(max_length, waveform.shape[1])
         
-        return audio_files, max_length
+        return audio_filenames, max_length
     
-    def _load_labels(self, audio_files):
+    def _load_labels(self, audio_filenames):
+        """loads the labels corresponding to the audio filenames
 
+        Parameters
+        ----------
+        audio_filenames : [[str, ...]
+            list of filenames
+
+        Returns
+        -------
+        tensor([[float,float,float,float], ...])
+            array of floats is [intro_start, intro_end, outro_start, outro_end]
+            len(audio_filenames) x 4 size tensor of all the labels in milliseconds
+
+        Raises
+        ------
+        RuntimeError
+            If labels fail to load then error is logged, 
+            but attempts to finish and raises error after
+        """
         labels = []
         error  = False
         
-        for filename in audio_files:
+        for filename in audio_filenames:
             file = os.path.splitext(filename)[0] + '.label'
             filepath = os.path.join(self.label_dir, file)
             label = [0] * 4
@@ -72,6 +97,9 @@ class AnimeAudioDataset(Dataset):
         return torch.Tensor(labels)
                 
     def _normalize_labels(self, labels):
+        """normalizes labels off entire mean and std
+        returns labels, mean, std
+        """
         l_mean = labels.mean(dim=0)
         l_std = labels.std(dim=0)
         labels = (labels - l_mean) / l_std
@@ -89,12 +117,12 @@ class AnimeAudioDataset(Dataset):
         return torch.cat((data, zeros), dim=1)
     
     def __len__(self):
-        return len(self.audio_files)
+        return len(self.audio_filenames)
     
     def __getitem__(self, idx):
         # idx can be a tensor
-        audio_file = os.path.join(self.audio_dir, self.audio_files[idx])
-        waveform, _ = torchaudio.load(audio_file)
+        audio_filename = os.path.join(self.audio_dir, self.audio_filenames[idx])
+        waveform, _ = torchaudio.load(audio_filename)
         # padded_audio = self._pad_audio([waveform])
         padded_audio = self._pad_audio(waveform)
         padded_audio = padded_audio.to(self.device)
