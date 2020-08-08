@@ -42,6 +42,27 @@ class Net(nn.Module):
         pool_kernel_size,
         batch_size,
     ):
+        """
+        Calculate the size of the flatted conv/pool layer going into the fully connected layer.
+        See https://pytorch.org/docs/stable/generated/torch.nn.Conv1d.html and
+            https://pytorch.org/docs/master/generated/torch.nn.MaxPool1d.html for the formulas.
+
+        Parameters
+        ----------
+        input_size: int
+            number of datapoints in the input of the final conv layer
+        num_channels: int
+            number of channels of the data
+        conv_kernel_size: int
+            size of the kernel for the final conv layer
+        conv_stride: int
+            stride for the final conv layer
+        pool_kernel_size: int
+            size of the kernel for the max pool layer after the conv layer
+        batch_size: int
+            batch_size we are training with
+
+        """
         conv_output_dim = math.floor(
             (input_size - (conv_kernel_size - 1) - 1) / conv_stride + 1
         )
