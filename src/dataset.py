@@ -23,7 +23,6 @@ class AnimeAudioDataset(Dataset):
         
         self.audio_filenames, self.max_length = self._load_audio()
         raw_labels = self._load_labels(self.audio_filenames)
-        print(raw_labels)
         self.labels, self.l_mean, self.l_std = self._normalize_labels(raw_labels)
         self.labels = self.labels.to(self.device)
     

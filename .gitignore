@@ -1,1 +1,7 @@
 *.swp
+*.mp4
+*.label
+*.wav
+*.gz
+__pycache__/
+.ipynb_checkpoints/
