@@ -69,4 +69,4 @@ class Net(nn.Module):
         pool_output_dim = math.floor(
             (conv_output_dim - (pool_kernel_size - 1) - 1) / pool_kernel_size + 1
         )
-        return pool_output_dim * num_channels * batch_size
+        return pool_output_dim * num_channels
