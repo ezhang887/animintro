@@ -15,7 +15,7 @@ class AnimeAudioDataset(Dataset):
     Labels are all loaded into memory and normalized during initialization
     """
    
-    def __init__(self, device, audio_dir, label_dir, load_all_in_mem=False):
+    def __init__(self, audio_dir, label_dir, device, load_all_in_mem=False):
         
         self.load_all = load_all_in_mem
         self.device = device
