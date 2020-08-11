@@ -27,20 +27,19 @@ model.cuda()
 model.eval()
 
 audio_dir = '../data/Audio/lofi'
-read = False
 for a in os.listdir(audio_dir):
-    if read:
-        print(a)
-        filename = os.path.join(audio_dir, a)
-        with torch.no_grad():
-            fp = model.forward(filename)
-        savedir = '../data/Audio/vggish_lofi'
-        a_no_ext = os.path.splitext(a)[0]
-        a_pt = a_no_ext + '.pt'
-        savedir = os.path.join(savedir, a_pt)
-        torch.save(fp,savedir)
+    print(a)
     if (a == 'Made_in_Abyss_13.wav'):
-        read = True
+        continue
+    filename = os.path.join(audio_dir, a)
+    with torch.no_grad():
+        fp = model.forward(filename)
+    savedir = '../data/Audio/vggish_lofi'
+    a_no_ext = os.path.splitext(a)[0]
+    a_pt = a_no_ext + '.pt'
+    savedir = os.path.join(savedir, a_pt)
+    torch.save(fp,savedir)
+    
 
 
 # audio_dir = '../data/Audio/lofi'
