@@ -98,8 +98,8 @@ class AnimeAudioDataset(Dataset):
         for filename in os.listdir(self.label_dir):
             # get only file with no extension
             fe = os.path.splitext(filename)[0]
-            if fe == 'Boku_no_Hero_Academia_9' or fe == 'Samurai_Champloo_19':
-                # this one is broken
+            if fe == 'Boku_no_Hero_Academia_9' or fe == 'Samurai_Champloo_19' or fe == 'Haikyuu!!_9':
+                # these are broken in someway
                 continue
             audio_filenames.append(fe)
         
@@ -173,6 +173,9 @@ class AnimeAudioDataset(Dataset):
         return len(self.audio_filenames)
     
     def __getitem__(self, idx):
+        # TODO: update this
+        # for now make this return audios instead of audios_time
+        
         # idx can be a tensor
         audio_filename = os.path.join(self.audio_dir, self.audio_filenames[idx])
         waveform, _ = torchaudio.load(audio_filename)
