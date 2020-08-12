@@ -1,20 +1,84 @@
 #!/usr/bin/env python3
 
+import random
 import torch
 import torchaudio
 import os
 
 from torch.utils.data import Dataset
 
+def load_audio_filenames(audio_dir):
+    audio_filenames = []
+    max_length = 0
 
-class AnimeAudioDataset(Dataset):
+    for a in os.listdir(audio_dir):
+        audio_filenames.append(a)
+        audio_filename = os.path.join(audio_dir, a)
+        waveform, _ = torchaudio.load(audio_filename)
+
+        max_length = max(max_length, waveform.shape[1])
+
+    return audio_filenames, max_length
+
+def get_train_val_data(audio_dir, label_dir, device, validation_split=0.2, load_all_in_mem=False):
+    
+    audio_filenames, max_length = load_audio_filenames(audio_dir)
+    random.shuffle(audio_filenames)
+
+    split_num = int(len(audio_filenames) * validation_split)
+
+    train_filenames = audio_filenames[split_num:]
+    val_filenames = audio_filenames[:split_num]
+
+    train_dataset = AudioDataset(train_filenames, 
+                                audio_dir,
+                                label_dir,
+                                max_length,
+                                device,
+                                load_all_in_mem)
+    val_dataset = AudioDataset(val_filenames,
+                                audio_dir,
+                                label_dir,
+                                max_length,
+                                device,
+                                load_all_in_mem,
+                                l_mean=train_dataset.l_mean,
+                                l_std=train_dataset.l_std)
+
+    return train_dataset, val_dataset
+
+class AudioDataset(Dataset):
     """
     Load in audio file names and get the length of the largest audio sample.
     Audio is loaded into memory when _get_item is called
     
     Labels are all loaded into memory and normalized during initialization
     """
-   
+
+    def __init__(self,
+            audio_filenames,
+            audio_dir,
+            label_dir,
+            max_length,
+            device,
+            load_all_in_mem=False,
+            l_mean=None,
+            l_std=None):
+
+        self.audio_filenames = audio_filenames
+        self.audio_dir = audio_dir
+        self.label_dir = label_dir
+        self.max_length = max_length
+        self.device = device
+        self.load_all = load_all_in_mem
+        self.l_mean = l_mean
+        self.l_std = l_std
+        
+        self.raw_labels = self._load_labels(self.audio_filenames)
+        self.labels, self.l_mean, self.l_std = self._normalize_labels(self.raw_labels)
+        self.labels = self.labels.to(self.device)
+
+    '''
     def __init__(self, audio_dir, label_dir, device, load_all_in_mem=False):
         
         self.load_all = load_all_in_mem
@@ -32,17 +96,12 @@ class AnimeAudioDataset(Dataset):
         else:
             self.audio_filenames, self.max_length, _ = self._load_audio()
         
-        raw_labels = self._load_labels(self.audio_filenames)
-        self.labels, self.l_mean, self.l_std = self._normalize_labels(raw_labels)
+        self.raw_labels = self._load_labels(self.audio_filenames)
+        self.labels, self.l_mean, self.l_std = self._normalize_labels(self.raw_labels)
         self.labels = self.labels.to(self.device)
 
         assert len(self.audio_filenames) == len(self.labels)
-
-        """
-        self.data = self._pad_audio(self._load_audio())
-        self.labels, self.label_mean, self.label_std = \
-                self._normalize_labels(self._load_labels())
-        """
+    '''
 
     def _load_audio(self):
         """loads in audio filenames and finds maximum length of all audio segments
@@ -111,6 +170,9 @@ class AnimeAudioDataset(Dataset):
         """normalizes labels off entire mean and std
         returns labels, mean, std
         """
+        if self.l_mean is not None and self.l_std is not None:
+            labels = (labels - self.l_mean) / self.l_std
+            return labels, self.l_mean, self.l_std
         l_mean = labels.mean(dim=0)
         l_std = labels.std(dim=0)
         labels = (labels - l_mean) / l_std
