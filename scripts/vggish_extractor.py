@@ -29,7 +29,7 @@ model.eval()
 audio_dir = '../data/Audio/lofi'
 for a in os.listdir(audio_dir):
     print(a)
-    if (a == 'Made_in_Abyss_13.wav'):
+    if a == 'Made_in_Abyss_13.wav':
         continue
     filename = os.path.join(audio_dir, a)
     with torch.no_grad():

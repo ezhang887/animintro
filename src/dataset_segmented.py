@@ -16,35 +16,32 @@ class AnimeAudioDataset(Dataset):
     """
     
     def __init__(self):
-        self.audio_dir = 'data/Audio/vggish_lofi'
+        self.feature_dir = 'data/Audio/vggish_lofi'
+        self.mel_dir = 'data/Audio/mel-spectrogram'
         self.label_dir = 'data/Labels' # change this to whatever
         
         self.audio_filenames = self._get_filenames()
-        self.audios = self._load_audio()
+        self.features, self.mel_spectrograms = self._load_audio()
         self.labels = self._load_labels()
-        self.audios_time = self._append_time()
-        self.labels96 = self._segment_labels()
+        self.time = self._load_time()
+        self.labels96 = self._segment_label s()
         
-        assert len(self.audios) == len(self.labels)
-        
-        '''
-        self.data = self._pad_audio(self._get_filenames())
-        self.labels, self.label_mean, self.label_std = \
-                self._normalize_labels(self._load_labels())
-        '''
+        assert len(self.features) == len(self.labels)
     
-    def _append_time(self):
+
+    def _load_time(self):
         """adds the normalized time stamp as one of the features
 
         Returns
         -------
-        dict (filename : tensor([int, 129]))
-            2D matrix same as return of load audio except with an added
+        dict (filename : tensor([int, 1]))
+            2D matrix(1D vertical to match features so that 
+                      torch.cat((features[i],audios_time[i]),1) works)
             feature that is the normalized timestep of where audio slice
         """
-        audios_time = {}
-        for filename in self.audios:
-            x = self.audios[filename]
+        time = {}
+        for filename in self.features:
+            x = self.features[filename]
             l = x.size()[0]
             
             r = np.arange(l).astype(np.float32)
@@ -55,8 +52,8 @@ class AnimeAudioDataset(Dataset):
 
             # cuda because saved tensors are cuda
             r = torch.from_numpy(r).cuda()
-            audios_time[filename] = torch.cat((x,r),1)
-        return audios_time
+            time[filename] = r
+        return time
 
 
     def _load_audio(self):
@@ -68,19 +65,30 @@ class AnimeAudioDataset(Dataset):
             2D matrix. Contains 128-len vectors describing each .96 sec slice of 
             the respective audio file. Int would be how many of these slices are
             in the audio file.
+        dict (filename : tensor([int, 1, 96, 64])
+            basicalky 3d mat. contains 96x64 matricies representing the log 
+            mel spectrogram of the audio. Int is same as above
         """
-        audios = {}
+        features = {}
+        mel_spectrograms = {}
+
         for filename in self.audio_filenames:
             # load audio
             audio_filename = filename + '.pt'
-            audio_path = os.path.join(self.audio_dir, audio_filename)
-            audio = torch.load(audio_path)
+
+            feature_path = os.path.join(self.feature_dir, audio_filename)
+            feature = torch.load(feature_path)
+
+            mel_spectrogram_path = os.path.join(self.mel_dir, audio_filename)
+            mel_spectrogram = torch.load(mel_spectrogram_path)
+
+            # # normalize
+            # audio = audio/255-.5
             
-            # normalize
-            audio = audio/255-.5
-            
-            audios[filename] = audio
-        return audios
+            features[filename] = feature
+            mel_spectrograms[filename] = mel_spectrogram
+
+        return features, mel_spectrograms
 
 
     def _get_filenames(self):
@@ -148,8 +156,9 @@ class AnimeAudioDataset(Dataset):
         labels96 = {}
         for filename in self.labels:
             print (filename)
-            y = self.audios[filename]
+            y = self.features[filename]
             l = y.size()[0]
+
             x = torch.zeros(l)
 
             label = self.labels[filename]
