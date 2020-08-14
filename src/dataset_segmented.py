@@ -189,4 +189,4 @@ class AnimeAudioDataset(Dataset):
         
         # idx can be a tensor
         key = self.audio_filenames[idx]
-        return self.features[key], self.labels96[key]
+        return self.features[key], self.mel_spectrograms[key], self.labels[key], self.time[key], self.labels96[key]
