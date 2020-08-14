@@ -9,12 +9,11 @@ from torch.utils.data import Dataset
 
 class AnimeAudioDataset(Dataset):
     """
-    Load in audio file names and get the length of the largest audio sample.
-    Audio is loaded into memory when _get_item is called
-    
-    Labels are all loaded into memory and normalized during initialization
+    Loads all audio file data. Includes:
+    features, mel-spectrogram, labels, time, labels96
     """
     
+    # TODO: add normalized flag
     def __init__(self):
         self.feature_dir = 'data/Audio/vggish_lofi'
         self.mel_dir = 'data/Audio/mel-spectrogram'
@@ -24,7 +23,7 @@ class AnimeAudioDataset(Dataset):
         self.features, self.mel_spectrograms = self._load_audio()
         self.labels = self._load_labels()
         self.time = self._load_time()
-        self.labels96 = self._segment_label s()
+        self.labels96 = self._segment_labels()
         
         assert len(self.features) == len(self.labels)
     
@@ -46,7 +45,7 @@ class AnimeAudioDataset(Dataset):
             
             r = np.arange(l).astype(np.float32)
 
-            # normalize
+            # normalize TODO: take in normalized flag
             r = r/l - .5
             r = np.reshape(r, (l,1))
 
@@ -181,14 +180,13 @@ class AnimeAudioDataset(Dataset):
     def __len__(self):
         return len(self.audio_filenames)
     
+    def get_all(self, key):
+        return self.features[key], self.mel_spectrograms[key], self.labels[key], self.time[key], self.labels96[key]
+
     def __getitem__(self, idx):
         # TODO: update this
         # for now make this return audios instead of audios_time
         
         # idx can be a tensor
-        audio_filename = os.path.join(self.audio_dir, self.audio_filenames[idx])
-        waveform, _ = torchaudio.load(audio_filename)
-        # padded_audio = self._pad_audio([waveform])
-        padded_audio = self._pad_audio(waveform)
-        padded_audio = padded_audio.to(self.device)
-        return padded_audio, self.labels[idx]
+        key = self.audio_filenames[idx]
+        return self.features[key], self.labels96[key]
