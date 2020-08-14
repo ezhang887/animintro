@@ -6,13 +6,8 @@ import torch.nn.functional as F
 
 
 class Net(nn.Module):
-    def __init__(self, batch_size, max_length, mean=None, stddev=None):
+    def __init__(self, max_length, batch_size):
         super(Net, self).__init__()
-        self.mean = mean
-        self.stddev = stddev
-        self.max_length = max_length
-        self.batch_size = batch_size
-
         conv1_kernel_size = 1600
         conv1_stride = 10
         conv1_out_channels = 4
@@ -28,7 +23,7 @@ class Net(nn.Module):
             self.conv1_pool_size,
             batch_size,
         )
-        self.fc1 = nn.Linear(self.fc1_input_size, 4 * batch_size)
+        self.fc1 = nn.Linear(self.fc1_input_size, 4)
 
     def forward(self, x):
         # Input (x) shape: [batch_size, input_channels (2), max_length]
