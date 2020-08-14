@@ -22,10 +22,12 @@ Loads a model from disk to resume training from.
 filename - path to where the model is saved
 model - nn.Module to load into
 optimizer - optimizer to load into to continue training. If None, will only load the weights into the model.
+
+Returns the epoch that training was saved on (or None if the epoch wasn't saved).
 """
 
 
-def load_model(filename, model, optimizer = None):
+def load_model(filename, model, optimizer=None):
     with open(filename, "rb") as f:
         state = torch.load(filename)
 
@@ -35,3 +37,7 @@ def load_model(filename, model, optimizer = None):
     if optimizer is not None:
         assert "optimizer_state" in state
         optimizer.load_state_dict(state["optimizer_state"])
+
+    if "epoch" in state:
+        return state["epoch"]
+    return None
