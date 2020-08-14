@@ -25,7 +25,7 @@ optimizer - optimizer to load into to continue training. If None, will only load
 """
 
 
-def load_model(filename, model, optimizer):
+def load_model(filename, model, optimizer = None):
     with open(filename, "rb") as f:
         state = torch.load(filename)
 
