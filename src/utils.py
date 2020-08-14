@@ -60,7 +60,7 @@ def load_model(filename, model, optimizer=None):
     return None
 
 
-def predict(filename, model, batch_size, use_cuda=True):
+def predict(filename, model, use_cuda=True):
     assert model.mean is not None
     assert model.stddev is not None
 
@@ -71,7 +71,7 @@ def predict(filename, model, batch_size, use_cuda=True):
 
     dummy = waveform.clone()
 
-    for i in range(batch_size - 1):
+    for i in range(model.batch_size - 1):
         waveform = torch.cat((waveform, dummy))
 
     if use_cuda:
@@ -79,7 +79,7 @@ def predict(filename, model, batch_size, use_cuda=True):
 
     prediction = model(waveform)
 
-    prediction = prediction.cpu().reshape(batch_size, 4)
+    prediction = prediction.cpu().reshape(model.batch_size, 4)
 
     prediction = prediction * model.stddev + model.mean
     return prediction

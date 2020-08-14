@@ -11,6 +11,7 @@ class Net(nn.Module):
         self.mean = mean
         self.stddev = stddev
         self.max_length = max_length
+        self.batch_size = batch_size
 
         conv1_kernel_size = 1600
         conv1_stride = 10
