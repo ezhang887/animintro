@@ -6,6 +6,8 @@ import os
 
 from torch.utils.data import Dataset
 
+from src.utils import pad_audio
+
 
 class AnimeAudioDataset(Dataset):
     """
@@ -26,7 +28,7 @@ class AnimeAudioDataset(Dataset):
         if self.load_all:
             self.audio_filenames, self.max_length, self.audio_data = self._load_audio()
             for i in range(len(self.audio_data)):
-                self.audio_data[i] = self._pad_audio(self.audio_data[i])
+                self.audio_data[i] = pad_audio(self.audio_data[i], self.max_length)
             self.audio_data = torch.cat(self.audio_data)
             self.audio_data.to(self.device)
         else:
@@ -37,12 +39,6 @@ class AnimeAudioDataset(Dataset):
         self.labels = self.labels.to(self.device)
 
         assert len(self.audio_filenames) == len(self.labels)
-
-        """
-        self.data = self._pad_audio(self._load_audio())
-        self.labels, self.label_mean, self.label_std = \
-                self._normalize_labels(self._load_labels())
-        """
 
     def _load_audio(self):
         """loads in audio filenames and finds maximum length of all audio segments
@@ -116,22 +112,11 @@ class AnimeAudioDataset(Dataset):
         labels = (labels - l_mean) / l_std
         return labels, l_mean, l_std
 
-    def _pad_audio(self, data):
-        # longest = max(map(lambda x: x.shape[1], data))
-        """
-        for i in range(len(data)):
-            zeros = torch.zeros(2, (self.max_length - data[i].shape[1]))
-            data[i] = torch.cat((data[i], zeros), dim=1)
-        return torch.stack(data)
-        """
-        zeros = torch.zeros(2, (self.max_length - data.shape[1]))
-        return torch.cat((data, zeros), dim=1)
-
     def __len__(self):
         return len(self.audio_filenames)
 
     def __getitem__(self, idx):
-       # idx can be a tensor'
+        # idx can be a tensor'
         if self.load_all:
             print("loading from gpu mem")
             return self.audio_data[idx], self.labels[idx]
@@ -139,6 +124,6 @@ class AnimeAudioDataset(Dataset):
             audio_filename = os.path.join(self.audio_dir, self.audio_filenames[idx])
             waveform, _ = torchaudio.load(audio_filename)
             
-            padded_audio = self._pad_audio(waveform)
+            padded_audio = pad_audio(waveform, self.max_length)
             padded_audio = padded_audio.to(self.device)
             return padded_audio, self.labels[idx]
