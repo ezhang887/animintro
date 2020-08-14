@@ -6,8 +6,11 @@ import torch.nn.functional as F
 
 
 class Net(nn.Module):
-    def __init__(self, max_length, batch_size):
+    def __init__(self, max_length, batch_size, mean=None, stddev=None):
         super(Net, self).__init__()
+        self.mean = mean
+        self.stddev = stddev
+
         conv1_kernel_size = 1600
         conv1_stride = 10
         conv1_out_channels = 4

@@ -7,10 +7,15 @@ so we can use this as a checkpoint to resume training from.
 
 
 def save_model(filename, model, optimizer, epoch):
+    assert model.mean is not None
+    assert model.stddev is not None
+
     state = {
+        "model_state": model.state_dict(),
+        "mean": model.mean,
+        "stddev": model.stddev,
         "epoch": epoch,
         "optimizer_state": optimizer.state_dict(),
-        "model_state": model.state_dict(),
     }
     with open(filename, "wb") as f:
         torch.save(state, f)
@@ -33,6 +38,12 @@ def load_model(filename, model, optimizer=None):
 
     assert "model_state" in state
     model.load_state_dict(state["model_state"])
+
+    assert "mean" in state
+    model.mean = state["mean"]
+
+    assert "stddev" in state
+    model.stddev = state["stddev"]
 
     if optimizer is not None:
         assert "optimizer_state" in state

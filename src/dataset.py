@@ -29,12 +29,6 @@ class AnimeAudioDataset(Dataset):
 
         assert len(self.audio_filenames) == len(self.labels)
 
-        """
-        self.data = self._pad_audio(self._load_audio())
-        self.labels, self.label_mean, self.label_std = \
-                self._normalize_labels(self._load_labels())
-        """
-
     def _load_audio(self):
         """loads in audio filenames and finds maximum length of all audio segments
 
