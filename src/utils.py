@@ -1,4 +1,6 @@
 import torch
+import torchaudio
+import numpy as np
 
 """
 Saves a model to disk. Also saves the optimizer state
@@ -14,6 +16,7 @@ def save_model(filename, model, optimizer, epoch):
         "model_state": model.state_dict(),
         "mean": model.mean,
         "stddev": model.stddev,
+        "max_audio_len": model.max_length,
         "epoch": epoch,
         "optimizer_state": optimizer.state_dict(),
     }
@@ -45,6 +48,9 @@ def load_model(filename, model, optimizer=None):
     assert "stddev" in state
     model.stddev = state["stddev"]
 
+    assert "max_audio_len" in state
+    model.max_length = state["max_audio_len"]
+
     if optimizer is not None:
         assert "optimizer_state" in state
         optimizer.load_state_dict(state["optimizer_state"])
@@ -52,3 +58,33 @@ def load_model(filename, model, optimizer=None):
     if "epoch" in state:
         return state["epoch"]
     return None
+
+
+def predict(filename, model, batch_size, use_cuda=True):
+    assert model.mean is not None
+    assert model.stddev is not None
+
+    waveform, _ = torchaudio.load(filename)
+
+    waveform = pad_audio(waveform, model.max_length)
+    waveform = waveform.unsqueeze(dim=0)
+
+    dummy = waveform.clone()
+
+    for i in range(batch_size - 1):
+        waveform = torch.cat((waveform, dummy))
+
+    if use_cuda:
+        waveform = waveform.cuda()
+
+    prediction = model(waveform)
+
+    prediction = prediction.cpu().reshape(batch_size, 4)
+
+    prediction = prediction * model.stddev + model.mean
+    return prediction
+
+
+def pad_audio(data, max_audio_len):
+    zeros = torch.zeros(2, (max_audio_len - data.shape[1]))
+    return torch.cat((data, zeros), dim=1)

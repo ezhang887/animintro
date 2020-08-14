@@ -6,6 +6,8 @@ import os
 
 from torch.utils.data import Dataset
 
+from src.utils import pad_audio
+
 
 class AnimeAudioDataset(Dataset):
     """
@@ -99,17 +101,6 @@ class AnimeAudioDataset(Dataset):
         labels = (labels - l_mean) / l_std
         return labels, l_mean, l_std
 
-    def _pad_audio(self, data):
-        # longest = max(map(lambda x: x.shape[1], data))
-        """
-        for i in range(len(data)):
-            zeros = torch.zeros(2, (self.max_length - data[i].shape[1]))
-            data[i] = torch.cat((data[i], zeros), dim=1)
-        return torch.stack(data)
-        """
-        zeros = torch.zeros(2, (self.max_length - data.shape[1]))
-        return torch.cat((data, zeros), dim=1)
-
     def __len__(self):
         return len(self.audio_filenames)
 
@@ -117,7 +108,6 @@ class AnimeAudioDataset(Dataset):
         # idx can be a tensor
         audio_filename = os.path.join(self.audio_dir, self.audio_filenames[idx])
         waveform, _ = torchaudio.load(audio_filename)
-        # padded_audio = self._pad_audio([waveform])
-        padded_audio = self._pad_audio(waveform)
+        padded_audio = pad_audio(waveform, self.max_length)
         padded_audio = padded_audio.to(self.device)
         return padded_audio, self.labels[idx]
