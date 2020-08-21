@@ -11,6 +11,11 @@ class AnimeAudioDataset(Dataset):
     """
     Loads all audio file data. Includes:
     features, mel-spectrogram, labels, time, labels96
+    to get features and mel spectogram, look at /scripts mel-spectrogram.py
+    and vggish_extractor.py. You have to have torchvggish in the ../../ directory.
+    Currently the gpu usage with harritaylor/torchvggish is broken, so you
+    can use my(botkevin) hotfix, which i forked onto my github. This will
+    take a while to run because there is a decent amount of data.
     """
     
     # TODO: add normalized flag
@@ -147,8 +152,8 @@ class AnimeAudioDataset(Dataset):
 
         Returns
         -------
-        dict(filename : tensor([int, ...])
-            tensor is 1d array of 0,1,2.
+        dict(filename : [int, ...])
+            1d array of 0,1,2.
             Each index represents a consective 960 ms(.96 s) audio slice.
             1 is intro, 2 is outro, 0 is neither
         """
@@ -158,7 +163,8 @@ class AnimeAudioDataset(Dataset):
             y = self.features[filename]
             l = y.size()[0]
 
-            x = torch.zeros(l)
+            x = [0]*l
+            # torch.zeros(l)
 
             label = self.labels[filename]
             start_intro = label[0] // 960 + 1 # round up
@@ -172,7 +178,7 @@ class AnimeAudioDataset(Dataset):
             for i in range(start_outro, end_outro):
                 x[i] = 2
 
-            labels96[filename] = x.cuda()
+            labels96[filename] = x
             
         return labels96
                 
