@@ -7,7 +7,6 @@ Saves a model to disk. Also saves the optimizer state
 so we can use this as a checkpoint to resume training from.
 """
 
-
 def save_model(filename, model, optimizer, epoch):
     assert model.mean is not None
     assert model.stddev is not None
@@ -33,7 +32,6 @@ optimizer - optimizer to load into to continue training. If None, will only load
 
 Returns the epoch that training was saved on (or None if the epoch wasn't saved).
 """
-
 
 def load_model(filename, model, optimizer=None):
     with open(filename, "rb") as f:
