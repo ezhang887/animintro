@@ -28,7 +28,7 @@ class AnimeAudioDataset(Dataset):
         if self.load_all:
             self.audio_filenames, self.max_length, self.audio_data = self._load_audio()
             for i in range(len(self.audio_data)):
-                self.audio_data[i] = self._pad_audio(self.audio_data[i])
+                self.audio_data[i] = pad_audio(self.audio_data[i], self.max_length)
             self.audio_data = torch.cat(self.audio_data)
             self.audio_data.to(self.device)
         else:
@@ -124,6 +124,6 @@ class AnimeAudioDataset(Dataset):
             audio_filename = os.path.join(self.audio_dir, self.audio_filenames[idx])
             waveform, _ = torchaudio.load(audio_filename)
             
-            padded_audio = self._pad_audio(waveform)
+            padded_audio = pad_audio(waveform, self.max_length)
             padded_audio = padded_audio.to(self.device)
             return padded_audio, self.labels[idx]

@@ -4,6 +4,7 @@
 *.wav
 *.gz
 *.pyc
+runs/
 __pycache__/
 .ipynb_checkpoints/
 *.model

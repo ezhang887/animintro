@@ -6,12 +6,11 @@ import torch.nn.functional as F
 
 
 class Net(nn.Module):
-    def __init__(self, batch_size, max_length, mean=None, stddev=None):
+    def __init__(self, max_length, mean=None, stddev=None):
         super(Net, self).__init__()
         self.mean = mean
         self.stddev = stddev
         self.max_length = max_length
-        self.batch_size = batch_size
 
         conv1_kernel_size = 1600
         conv1_stride = 10
@@ -26,12 +25,11 @@ class Net(nn.Module):
             conv1_kernel_size,
             conv1_stride,
             self.conv1_pool_size,
-            batch_size,
         )
-        self.fc1 = nn.Linear(self.fc1_input_size, 4 * batch_size)
+        self.fc1 = nn.Linear(self.fc1_input_size, 4)
 
     def forward(self, x):
-        # Input (x) shape: [batch_size, input_channels (2), max_length]
+        # Input (x) shape: [input_channels (2), max_length]
         x = F.relu(self.conv1(x))
         x = F.max_pool1d(x, self.conv1_pool_size)
         x = x.view(-1, self.fc1_input_size)
@@ -45,7 +43,6 @@ class Net(nn.Module):
         conv_kernel_size,
         conv_stride,
         pool_kernel_size,
-        batch_size,
     ):
         """
         Calculate the size of the flatted conv/pool layer going into the fully connected layer.
@@ -64,9 +61,7 @@ class Net(nn.Module):
             stride for the final conv layer
         pool_kernel_size: int
             size of the kernel for the max pool layer after the conv layer
-        batch_size: int
-            batch_size we are training with
-
+        
         """
         conv_output_dim = math.floor(
             (input_size - (conv_kernel_size - 1) - 1) / conv_stride + 1
