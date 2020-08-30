@@ -13,9 +13,9 @@ class Net(nn.Module):
         self.max_length = max_length
 
         conv1_kernel_size = 1600
-        conv1_stride = 10
+        conv1_stride = 320
         conv1_out_channels = 4
-        self.conv1_pool_size = 5
+        self.conv1_pool_size = 50
         self.conv1 = nn.Conv1d(
             2, conv1_out_channels, conv1_kernel_size, stride=conv1_stride
         )
@@ -26,14 +26,20 @@ class Net(nn.Module):
             conv1_stride,
             self.conv1_pool_size,
         )
-        self.fc1 = nn.Linear(self.fc1_input_size, 4)
-
+        self.dropout1 = nn.Dropout(p=0.5)
+        self.fc1 = nn.Linear(self.fc1_input_size, 250)
+        self.dropout2 = nn.Dropout(p=0.5)
+        self.fc2 = nn.Linear(250, 4)
+    
     def forward(self, x):
         # Input (x) shape: [input_channels (2), max_length]
         x = F.relu(self.conv1(x))
         x = F.max_pool1d(x, self.conv1_pool_size)
         x = x.view(-1, self.fc1_input_size)
+        x = self.dropout1(x)
         x = self.fc1(x)
+        x = self.dropout2(x)
+        x = self.fc2(x)
         return x
 
     def __conv_pool_output_dim(
@@ -70,3 +76,8 @@ class Net(nn.Module):
             (conv_output_dim - (pool_kernel_size - 1) - 1) / pool_kernel_size + 1
         )
         return pool_output_dim * num_channels
+
+    def predict(self, data):
+        output = self.forward(data)
+        label = self.mean + (output * self.stddev)
+        return label
