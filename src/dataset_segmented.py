@@ -7,26 +7,27 @@ import numpy as np
 
 from torch.utils.data import Dataset
 
+
 class AnimeAudioDataset(Dataset):
     """
     Loads all audio file data. Includes:
-    features, mel-spectrogram, labels, time, labels96
+    features, labels, time, labels96
     """
-    
+
     # TODO: add normalized flag
-    def __init__(self):
-        self.feature_dir = 'data/Audio/vggish_lofi'
-        self.mel_dir = 'data/Audio/mel-spectrogram'
-        self.label_dir = 'data/Labels' # change this to whatever
-        
+    def __init__(self, l96=True):
+        self.feature_dir = "data/Audio/vggishLofi/"
+        self.label_dir = "data/Labels"  # change this to whatever
+
         self.audio_filenames = self._get_filenames()
-        self.features, self.mel_spectrograms = self._load_audio()
+        self.features = self._load_audio()
         self.labels = self._load_labels()
-        self.time = self._load_time()
+        # self.time = self._load_time()
         self.labels96 = self._segment_labels()
-        
+
+        self.l96 = l96
+
         assert len(self.features) == len(self.labels)
-    
 
     def _load_time(self):
         """adds the normalized time stamp as one of the features
@@ -42,18 +43,17 @@ class AnimeAudioDataset(Dataset):
         for filename in self.features:
             x = self.features[filename]
             l = x.size()[0]
-            
+
             r = np.arange(l).astype(np.float32)
 
             # normalize TODO: take in normalized flag
-            r = r/l - .5
-            r = np.reshape(r, (l,1))
+            r = r / l - 0.5
+            r = np.reshape(r, (l, 1))
 
             # cuda because saved tensors are cuda
             r = torch.from_numpy(r).cuda()
             time[filename] = r
         return time
-
 
     def _load_audio(self):
         """loads in audio tensors normalized
@@ -69,26 +69,18 @@ class AnimeAudioDataset(Dataset):
             mel spectrogram of the audio. Int is same as above
         """
         features = {}
-        mel_spectrograms = {}
 
+        # for filename in self.audio_filenames:
         for filename in self.audio_filenames:
             # load audio
-            audio_filename = filename + '.pt'
+            # filename += ".pt"
 
-            feature_path = os.path.join(self.feature_dir, audio_filename)
+            feature_path = os.path.join(self.feature_dir, filename + ".pt")
             feature = torch.load(feature_path)
 
-            mel_spectrogram_path = os.path.join(self.mel_dir, audio_filename)
-            mel_spectrogram = torch.load(mel_spectrogram_path)
-
-            # # normalize
-            # audio = audio/255-.5
-            
             features[filename] = feature
-            mel_spectrograms[filename] = mel_spectrogram
 
-        return features, mel_spectrograms
-
+        return features
 
     def _get_filenames(self):
         """loads in audio filenames without extension
@@ -101,17 +93,21 @@ class AnimeAudioDataset(Dataset):
         """
         audio_filenames = []
         max_length = 0
-        
-        for filename in os.listdir(self.label_dir):
+
+        for filename in os.listdir(self.feature_dir):
             # get only file with no extension
             fe = os.path.splitext(filename)[0]
-            if fe == 'Boku_no_Hero_Academia_9' or fe == 'Samurai_Champloo_19' or fe == 'Haikyuu!!_9':
+            if (
+                fe == "Boku_no_Hero_Academia_9"
+                or fe == "Samurai_Champloo_19"
+                or fe == "Haikyuu!!_9"
+            ):
                 # these are broken in someway
                 continue
             audio_filenames.append(fe)
-        
+
         return audio_filenames
-    
+
     def _load_labels(self):
         """loads the labels corresponding to the audio filenames
 
@@ -126,20 +122,31 @@ class AnimeAudioDataset(Dataset):
             label : [start intro in ms, end intro, start outro, end outro]
         """
         labels = {}
-        error  = False
-        
+        error = False
+
+        missing_labels = []
+
         for filename in self.audio_filenames:
-            label_filename = filename + '.label'
+            label_filename = filename + ".label"
+
             label_path = os.path.join(self.label_dir, label_filename)
-            
+
             # initialize list for label
             # [start intro in ms, end intro, start outro, end outro]
-            label = [-1]*4 
-            f = open(label_path, 'r')
+            label = [-1] * 4
+            try:
+                f = open(label_path, "r")
+            except:
+                missing_labels.append(label_filename)
+                continue
+
             for i in range(4):
                 label[i] = int(f.readline())
             labels[filename] = label
-        
+
+        if len(missing_labels):
+            raise RuntimeError(f"Missing Labels: {missing_labels}")
+
         return labels
 
     def _segment_labels(self):
@@ -154,39 +161,39 @@ class AnimeAudioDataset(Dataset):
         """
         labels96 = {}
         for filename in self.labels:
-            print (filename)
             y = self.features[filename]
             l = y.size()[0]
 
             x = torch.zeros(l)
 
             label = self.labels[filename]
-            start_intro = label[0] // 960 + 1 # round up
-            end_intro = label[1] // 960 # round down
-            start_outro = label[2] // 960 + 1 # round up
-            end_outro = label[3] // 960 # round down
+            start_intro = label[0] // 960 + 1  # round up
+            end_intro = label[1] // 960  # round down
+            start_outro = label[2] // 960 + 1  # round up
+            end_outro = label[3] // 960  # round down
 
             for i in range(start_intro, end_intro):
                 x[i] = 1
-            
+
             for i in range(start_outro, end_outro):
                 x[i] = 2
 
             labels96[filename] = x.cuda()
-            
+
         return labels96
-                
-    
+
     def __len__(self):
         return len(self.audio_filenames)
-    
+
     def get_all(self, key):
-        return self.features[key], self.mel_spectrograms[key], self.labels[key], self.time[key], self.labels96[key]
+        return self.features[key], self.labels[key], self.time[key], self.labels96[key]
 
     def __getitem__(self, idx):
         # TODO: update this
         # for now make this return audios instead of audios_time
-        
+
         # idx can be a tensor
         key = self.audio_filenames[idx]
-        return self.features[key], self.mel_spectrograms[key], self.labels[key], self.time[key], self.labels96[key]
+        if self.l96:
+            return self.features[key], self.labels96[key]
+        return self.features[key], self.labels[key]
